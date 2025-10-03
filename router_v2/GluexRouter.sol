@@ -21,34 +21,15 @@ contract GluexRouter is EthReceiver {
     error OnlyGlueTreasury();
     error ZeroAddress();
 
-    // Events
-    /**
-     * @notice Emitted when a routing operation is completed.
-     * @param uniquePID The unique identifier for the partner.
-     * @param userAddress The address of the user who initiated the route.
-     * @param outputReceiver The address of the receiver of the output token.
-     * @param inputToken The ERC20 token used as input.
-     * @param inputAmount The amount of input token used for routing.
-     * @param outputToken The ERC20 token received as output.
-     * @param outputAmount The expected output amount from the route.
-     * @param partnerFee The fee charged for the partner.
-     * @param routingFee The fee charged for the routing operation.
-     * @param finalOutputAmount The actual output amount received after routing.
-     */
-    event Swapped(
-        bytes32 indexed uniquePID,
-        address indexed userAddress,
-        address outputReceiver,
-        IERC20 inputToken,
-        uint256 inputAmount,
-        IERC20 outputToken,
-        uint256 outputAmount,
-        uint256 partnerFee,
-        uint256 routingFee,
-        uint256 finalOutputAmount
-    );
 
-    // DataTypes
+    struct SwapDetails {
+        uint256 outputAmount;
+        uint256 partnerFee;
+        uint256 routingFee;
+        uint256 finalOutputAmount;
+    }
+
+        // DataTypes
     /**
      * @dev A generic structure defining the parameters for a route.
      */
@@ -65,6 +46,27 @@ contract GluexRouter is EthReceiver {
         bool isPermit2; // Whether to use Permit2 for token transfers
         bytes32 uniquePID; // Unique identifier for the partner
     }
+
+    // Events
+    /**
+     * @notice Emitted when a routing operation is completed.
+     * @param uniquePID The unique identifier for the partner.
+     * @param userAddress The address of the user who initiated the route.
+     * @param outputReceiver The address of the receiver of the output token.
+     * @param inputToken The ERC20 token used as input.
+     * @param inputAmount The amount of input token used for routing.
+     * @param outputToken The ERC20 token received as output.
+     * @param details The Swap fee and amount details
+     */
+    event Swapped(
+        bytes32 indexed uniquePID,
+        address indexed userAddress,
+        address outputReceiver,
+        IERC20 inputToken,
+        uint256 inputAmount,
+        IERC20 outputToken,
+        SwapDetails details
+    );
 
     // Constants
     uint256 public _RAW_CALL_GAS_LIMIT = 5500;
@@ -223,7 +225,14 @@ contract GluexRouter is EthReceiver {
 
         // Transfer the final output amount to the receiver
         uniTransfer(IERC20(desc.outputToken), desc.outputReceiver, finalOutputAmount);
-
+        
+        // Emit the Swapped event
+        SwapDetails memory details = SwapDetails({
+            outputAmount: desc.outputAmount,
+            partnerFee: desc.partnerFee,
+            routingFee: routingFee,
+            finalOutputAmount: finalOutputAmount
+        });
         emit Swapped(
             desc.uniquePID,
             msg.sender,
@@ -231,10 +240,7 @@ contract GluexRouter is EthReceiver {
             desc.inputToken,
             inputAmount,
             desc.outputToken,
-            desc.outputAmount,
-            desc.partnerFee,
-            routingFee,
-            finalOutputAmount
+            details
         );
     }
 
